@@ -1,0 +1,120 @@
+name: Build & Push Wiki
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Aggregate docs and build wiki image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout wiki repo
+        uses: actions/checkout@v4
+
+      # ── Clone source repos using deploy keys ──────────────────────────
+
+      - name: Clone finance-dashboard
+        uses: actions/checkout@v4
+        with:
+          repository: maletsiri/finance-dashboard
+          ssh-key: ${{ secrets.DEPLOY_KEY_FINANCE_DASHBOARD }}
+          path: _src/finance-dashboard
+          sparse-checkout: |
+            docs/
+          sparse-checkout-cone-mode: false
+
+      - name: Clone finance-core
+        uses: actions/checkout@v4
+        with:
+          repository: maletsiri/finance-core
+          ssh-key: ${{ secrets.DEPLOY_KEY_FINANCE_CORE }}
+          path: _src/finance-core
+          sparse-checkout: |
+            README.md
+            docs/
+          sparse-checkout-cone-mode: false
+
+      - name: Clone my-investments-react-native
+        uses: actions/checkout@v4
+        with:
+          repository: maletsiri/my-investments-react-native
+          ssh-key: ${{ secrets.DEPLOY_KEY_MOBILE }}
+          path: _src/mobile
+          sparse-checkout: |
+            README.md
+            docs/
+          sparse-checkout-cone-mode: false
+
+      - name: Clone license-gatekeeper
+        uses: actions/checkout@v4
+        with:
+          repository: maletsiri/license-gatekeeper
+          ssh-key: ${{ secrets.DEPLOY_KEY_GATEKEEPER }}
+          path: _src/gatekeeper
+          sparse-checkout: |
+            README.md
+            docs/
+          sparse-checkout-cone-mode: false
+
+      # ── Assemble docs/ tree ──────────────────────────────────────────
+
+      - name: Assemble docs
+        run: |
+          set -e
+
+          # Backend — admin tier
+          mkdir -p docs/backend/admin
+          for f in deployment.md deployment-lessons-int.md ip-protection.md developer-ip-guide.md monitoring-runbook.md secrets-registry.md; do
+            [ -f "_src/finance-dashboard/docs/admin/$f" ] && cp "_src/finance-dashboard/docs/admin/$f" "docs/backend/admin/$f" || true
+          done
+
+          # Backend — dev tier
+          mkdir -p docs/backend/dev
+          for f in project-context.md architecture.md docker.md mcp-setup.md prd.md rbac-system.md b2b-organisations.md model-comparison.md per-user-settings-plan.md gold-analyst-implementation-plan.md; do
+            [ -f "_src/finance-dashboard/docs/dev/$f" ] && cp "_src/finance-dashboard/docs/dev/$f" "docs/backend/dev/$f" || true
+            # fallback: root docs/ (pre-reorganisation)
+            [ -f "_src/finance-dashboard/docs/$f" ] && cp "_src/finance-dashboard/docs/$f" "docs/backend/dev/$f" || true
+          done
+
+          # Mobile
+          mkdir -p docs/mobile
+          [ -f "_src/mobile/README.md" ] && cp _src/mobile/README.md docs/mobile/README.md || echo "# Mobile App\n\nREADME coming soon." > docs/mobile/README.md
+          [ -d "_src/mobile/docs" ] && cp -r _src/mobile/docs/. docs/mobile/ || true
+
+          # Trading Core
+          mkdir -p docs/core
+          [ -f "_src/finance-core/README.md" ] && cp _src/finance-core/README.md docs/core/README.md || echo "# Trading Core\n\nREADME coming soon." > docs/core/README.md
+          [ -d "_src/finance-core/docs" ] && cp -r _src/finance-core/docs/. docs/core/ || true
+
+          # Gatekeeper
+          mkdir -p docs/gatekeeper
+          [ -f "_src/gatekeeper/README.md" ] && cp _src/gatekeeper/README.md docs/gatekeeper/README.md || echo "# Gatekeeper\n\nREADME coming soon." > docs/gatekeeper/README.md
+          [ -d "_src/gatekeeper/docs" ] && cp -r _src/gatekeeper/docs/. docs/gatekeeper/ || true
+
+          echo "=== assembled docs tree ==="
+          find docs/ -type f | sort
+
+      # ── Build & push image ────────────────────────────────────────────
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push wiki image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/maletsiri/my-investments-wiki:latest
+          cache-from: type=registry,ref=ghcr.io/maletsiri/my-investments-wiki:cache
+          cache-to: type=registry,ref=ghcr.io/maletsiri/my-investments-wiki:cache,mode=max

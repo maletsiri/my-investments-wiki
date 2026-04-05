@@ -1,0 +1,53 @@
+site_name: my investments — docs
+site_description: Unified documentation for the my investments platform
+site_author: my investments
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: teal
+    accent: teal
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+
+  - Backend:
+    - Overview: backend/dev/project-context.md
+    - Architecture: backend/dev/architecture.md
+    - Docker: backend/dev/docker.md
+    - MCP Setup: backend/dev/mcp-setup.md
+    - PRD: backend/dev/prd.md
+    - RBAC System: backend/dev/rbac-system.md
+    - B2B Organisations: backend/dev/b2b-organisations.md
+    - Model Comparison: backend/dev/model-comparison.md
+    - Admin:
+      - Deployment: backend/admin/deployment.md
+      - Deployment Lessons: backend/admin/deployment-lessons-int.md
+      - IP Protection: backend/admin/ip-protection.md
+      - Developer IP Guide: backend/admin/developer-ip-guide.md
+      - Monitoring Runbook: backend/admin/monitoring-runbook.md
+      - Secrets Registry: backend/admin/secrets-registry.md
+
+  - Mobile:
+    - Overview: mobile/README.md
+
+  - Trading Core:
+    - Overview: core/README.md
+
+  - Gatekeeper:
+    - Overview: gatekeeper/README.md
